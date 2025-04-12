@@ -1,0 +1,117 @@
+{% extends "base_modern.html" %}
+
+{% block title %}US Code - Title {{ title_num }}{% endblock %}
+
+{% block breadcrumbs %}
+<ul class="breadcrumbs">
+    <li><a href="{{ url_for('index') }}">Home</a></li>
+    <li><a href="#">Title {{ title_num }}</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h1>Title {{ title_num }}: {{ data.content.title.heading }}</h1>
+
+    <div class="card mb-4">
+        <div class="card-header">
+            <h2 class="mb-0">Metadata</h2>
+        </div>
+        <div class="card-body">
+            <table class="sortable">
+                <thead>
+                    <tr>
+                        <th>Property</th>
+                        <th>Value</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for key, value in data.metadata.items() %}
+                        <tr>
+                            <th>{{ key }}</th>
+                            <td>{{ value }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="search-box">
+                <input type="text" class="list-filter" data-target="chapters-list" placeholder="Filter chapters...">
+            </div>
+        </div>
+        <div class="card-body">
+            <h2>Chapters</h2>
+            <div id="chapters-loading" class="text-center">
+                <div class="loading-spinner"></div>
+                <p>Loading chapters...</p>
+            </div>
+            <ul class="chapters-list" id="chapters-list" style="display: none;">
+                <!-- Chapters will be loaded dynamically -->
+            </ul>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fetch chapters data
+        fetch('/api/title/{{ title_num }}/chapters')
+            .then(response => response.json())
+            .then(data => {
+                const chaptersList = document.getElementById('chapters-list');
+                const loadingElement = document.getElementById('chapters-loading');
+
+                if (data.error) {
+                    loadingElement.innerHTML = `<p class="text-error">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                if (data.chapters && data.chapters.length > 0) {
+                    // Create chapter items
+                    data.chapters.forEach(chapter => {
+                        const li = document.createElement('li');
+                        li.className = 'chapter-item';
+
+                        const a = document.createElement('a');
+                        a.href = `/chapter/{{ title_num }}/${chapter.num}`;
+
+                        const numSpan = document.createElement('span');
+                        numSpan.className = 'chapter-number';
+                        numSpan.textContent = chapter.display_num || `Chapter ${chapter.num}`;
+
+                        const headingSpan = document.createElement('span');
+                        headingSpan.className = 'chapter-heading';
+                        headingSpan.textContent = chapter.heading;
+
+                        a.appendChild(numSpan);
+                        a.appendChild(document.createTextNode(' '));
+                        a.appendChild(headingSpan);
+                        li.appendChild(a);
+                        chaptersList.appendChild(li);
+                    });
+
+                    // Hide loading, show chapters
+                    loadingElement.style.display = 'none';
+                    chaptersList.style.display = 'block';
+
+                    // Initialize filter
+                    if (window.initFilterLists) {
+                        window.initFilterLists();
+                    }
+                } else {
+                    loadingElement.innerHTML = '<p>No chapters found for this title.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching chapters:', error);
+                document.getElementById('chapters-loading').innerHTML =
+                    '<p class="text-error">Error loading chapters. Please try again later.</p>';
+            });
+    });
+</script>
+{% endblock %}

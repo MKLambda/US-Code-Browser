@@ -1,0 +1,50 @@
+{% extends "base_modern.html" %}
+
+{% block title %}US Code - Title {{ title_num }} - Chapter {{ chapter_num }} - Section {{ section_num }}{% endblock %}
+
+{% block breadcrumbs %}
+<ul class="breadcrumbs">
+    <li><a href="{{ url_for('index') }}">Home</a></li>
+    <li><a href="{{ url_for('title', title_num=title_num) }}">Title {{ title_num }}</a></li>
+    <li><a href="{{ url_for('chapter', title_num=title_num, chapter_num=chapter_num) }}">Chapter {{ chapter_num }}</a></li>
+    <li><a href="#">Section {{ section_num }}</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h1>Section {{ section_num }}</h1>
+    <h2 class="mb-4">{{ section_data.heading }}</h2>
+    
+    <div class="section-content">
+        <p>{{ section_data.content }}</p>
+    </div>
+    
+    {% if section_data.subsections %}
+        <div class="card">
+            <div class="card-header">
+                <h3 class="mb-0">Subsections</h3>
+            </div>
+            <div class="card-body">
+                {% for subsection in section_data.subsections %}
+                    <div class="subsection">
+                        <h4 class="subsection-number">{{ subsection.num }}</h4>
+                        <div class="subsection-content">
+                            <p>{{ subsection.content }}</p>
+                            
+                            {% if subsection.paragraphs %}
+                                <div class="paragraphs">
+                                    {% for paragraph in subsection.paragraphs %}
+                                        <div class="paragraph">
+                                            <h5>{{ paragraph.num }}</h5>
+                                            <p>{{ paragraph.content }}</p>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}

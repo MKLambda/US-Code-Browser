@@ -1,0 +1,512 @@
+{% extends "base_modern.html" %}
+
+{% block title %}US Code - Search{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Search suggestions styles */
+    .search-suggestions {
+        position: absolute;
+        width: 100%;
+        background: white;
+        border: 1px solid var(--border-color);
+        border-top: none;
+        border-radius: 0 0 var(--border-radius) var(--border-radius);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 100;
+        max-height: 300px;
+        overflow-y: auto;
+        display: none;
+    }
+
+    .search-suggestion {
+        padding: var(--spacing-sm) var(--spacing-md);
+        cursor: pointer;
+        transition: background-color var(--transition-speed);
+    }
+
+    .search-suggestion:hover {
+        background-color: var(--background-color);
+    }
+
+    .search-suggestion .type-badge {
+        display: inline-block;
+        font-size: 0.75rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 10px;
+        margin-right: var(--spacing-sm);
+        color: white;
+    }
+
+    .search-suggestion .type-title {
+        background-color: var(--primary-color);
+    }
+
+    .search-suggestion .type-chapter {
+        background-color: var(--secondary-color);
+    }
+
+    .search-suggestion .type-section {
+        background-color: var(--accent-color);
+    }
+
+    .search-suggestion .type-search {
+        background-color: var(--success-color);
+    }
+
+    /* Advanced search styles */
+    .advanced-search {
+        margin-top: var(--spacing-md);
+        display: none;
+    }
+
+    .advanced-search.visible {
+        display: block;
+    }
+
+    .advanced-search-toggle {
+        background: none;
+        border: none;
+        color: var(--secondary-color);
+        cursor: pointer;
+        padding: 0;
+        font-size: 0.9rem;
+        margin-top: var(--spacing-sm);
+    }
+
+    .advanced-search-toggle:hover {
+        text-decoration: underline;
+    }
+
+    .advanced-search-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .advanced-search-field {
+        flex: 1;
+        min-width: 150px;
+    }
+
+    .advanced-search-field label {
+        display: block;
+        margin-bottom: var(--spacing-xs);
+        font-weight: 500;
+    }
+
+    .advanced-search-field select,
+    .advanced-search-field input {
+        width: 100%;
+        padding: var(--spacing-sm);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+    }
+
+    /* Search results styles */
+    .search-stats {
+        background-color: var(--background-color);
+        padding: var(--spacing-sm) var(--spacing-md);
+        border-radius: var(--border-radius);
+        margin-bottom: var(--spacing-md);
+        font-size: 0.9rem;
+    }
+
+    .search-filters {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+        margin-bottom: var(--spacing-md);
+    }
+
+    .search-filter {
+        background-color: var(--background-color);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        border-radius: var(--border-radius);
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+    }
+
+    .search-filter .remove {
+        margin-left: var(--spacing-xs);
+        cursor: pointer;
+        color: var(--light-text);
+    }
+
+    .search-filter .remove:hover {
+        color: var(--error-color);
+    }
+
+    .search-result-meta {
+        font-size: 0.85rem;
+        color: var(--light-text);
+        margin-bottom: var(--spacing-xs);
+    }
+
+    .search-result-meta .relevance {
+        display: inline-block;
+        margin-left: var(--spacing-sm);
+    }
+
+    .relevance-score {
+        display: inline-block;
+        width: 50px;
+        height: 8px;
+        background-color: var(--border-color);
+        border-radius: 4px;
+        overflow: hidden;
+        position: relative;
+        top: 1px;
+    }
+
+    .relevance-score-fill {
+        height: 100%;
+        background-color: var(--success-color);
+    }
+
+    .search-result-tags {
+        margin-top: var(--spacing-sm);
+    }
+
+    .search-result-tag {
+        display: inline-block;
+        font-size: 0.75rem;
+        padding: 0.1rem 0.5rem;
+        border-radius: 10px;
+        margin-right: var(--spacing-xs);
+        margin-bottom: var(--spacing-xs);
+        background-color: var(--background-color);
+    }
+
+    /* Highlight matches */
+    mark {
+        background-color: rgba(255, 240, 0, 0.4);
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<ul class="breadcrumbs">
+    <li><a href="{{ url_for('index') }}">Home</a></li>
+    <li><a href="#">Search</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h1>Search the US Code</h1>
+
+    <div class="card mb-4">
+        <div class="card-body">
+            <form action="{{ url_for('search') }}" method="get" id="search-form">
+                <div class="search-box">
+                    <input type="text" name="q" id="search-input" value="{{ query }}" placeholder="Enter search terms..." autocomplete="off">
+                    <button type="submit">Search</button>
+                    <div class="search-suggestions" id="search-suggestions"></div>
+                </div>
+
+                <button type="button" class="advanced-search-toggle" id="advanced-search-toggle">
+                    Advanced Search Options
+                </button>
+
+                <div class="advanced-search" id="advanced-search">
+                    <div class="advanced-search-row">
+                        <div class="advanced-search-field">
+                            <label for="title-filter">Title</label>
+                            <select name="title" id="title-filter">
+                                <option value="">All Titles</option>
+                                {% for title in all_titles %}
+                                    <option value="{{ title.number }}" {% if filters.title == title.number|string %}selected{% endif %}>
+                                        Title {{ title.number }}: {{ title.name }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="advanced-search-field">
+                            <label for="chapter-filter">Chapter</label>
+                            <input type="number" name="chapter" id="chapter-filter" placeholder="Chapter number" value="{{ filters.chapter }}" min="1">
+                        </div>
+
+                        <div class="advanced-search-field">
+                            <label for="section-filter">Section</label>
+                            <input type="number" name="section" id="section-filter" placeholder="Section number" value="{{ filters.section }}" min="1">
+                        </div>
+                    </div>
+
+                    <div class="advanced-search-row">
+                        <div class="advanced-search-field">
+                            <label for="sort-by">Sort By</label>
+                            <select name="sort" id="sort-by">
+                                <option value="relevance" {% if filters.sort == 'relevance' %}selected{% endif %}>Relevance</option>
+                                <option value="title" {% if filters.sort == 'title' %}selected{% endif %}>Title</option>
+                                <option value="chapter" {% if filters.sort == 'chapter' %}selected{% endif %}>Chapter</option>
+                                <option value="section" {% if filters.sort == 'section' %}selected{% endif %}>Section</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {% if results %}
+        <div class="card">
+            <div class="card-header">
+                <h2 class="mb-0">Search Results for "{{ query }}"</h2>
+            </div>
+            <div class="card-body">
+                <div class="search-stats">
+                    <p>Found {{ stats.total_results }} results across {{ stats.titles_found }} titles and {{ stats.chapters_found }} chapters</p>
+                </div>
+
+                {% if filters.title or filters.chapter or filters.section or filters.sort != 'relevance' %}
+                    <div class="search-filters">
+                        <div class="search-filter-label">Active filters:</div>
+                        {% if filters.title %}
+                            <div class="search-filter">
+                                Title: {{ filters.title }}
+                                <a href="{{ url_for('search', q=query, chapter=filters.chapter, section=filters.section, sort=filters.sort) }}" class="remove" title="Remove filter">&times;</a>
+                            </div>
+                        {% endif %}
+                        {% if filters.chapter %}
+                            <div class="search-filter">
+                                Chapter: {{ filters.chapter }}
+                                <a href="{{ url_for('search', q=query, title=filters.title, section=filters.section, sort=filters.sort) }}" class="remove" title="Remove filter">&times;</a>
+                            </div>
+                        {% endif %}
+                        {% if filters.section %}
+                            <div class="search-filter">
+                                Section: {{ filters.section }}
+                                <a href="{{ url_for('search', q=query, title=filters.title, chapter=filters.chapter, sort=filters.sort) }}" class="remove" title="Remove filter">&times;</a>
+                            </div>
+                        {% endif %}
+                        {% if filters.sort != 'relevance' %}
+                            <div class="search-filter">
+                                Sort: {{ filters.sort|capitalize }}
+                                <a href="{{ url_for('search', q=query, title=filters.title, chapter=filters.chapter, section=filters.section) }}" class="remove" title="Remove filter">&times;</a>
+                            </div>
+                        {% endif %}
+                        <div class="search-filter">
+                            <a href="{{ url_for('search', q=query) }}" title="Clear all filters">Clear all</a>
+                        </div>
+                    </div>
+                {% endif %}
+
+                <div class="search-results">
+                    {% for result in results %}
+                        <div class="search-result">
+                            <div class="search-result-meta">
+                                {% if result.is_title_match is defined and result.is_title_match %}
+                                    <span class="result-type">Title Match</span>
+                                {% else %}
+                                    <span class="result-type">Section Match</span>
+                                {% endif %}
+
+                                <span class="relevance">
+                                    Relevance:
+                                    <span class="relevance-score">
+                                        <span class="relevance-score-fill" style="width: {{ (result.relevance_score / 20) * 100 }}%"></span>
+                                    </span>
+                                </span>
+                            </div>
+
+                            <h3>
+                                {% if result.is_title_match is defined and result.is_title_match %}
+                                    <a href="{{ url_for('title', title_num=result.title_num) }}">
+                                        Title {{ result.title_num }}: {{ result.title_name }}
+                                    </a>
+                                {% else %}
+                                    <a href="{{ url_for('section', title_num=result.title_num, chapter_num=result.chapter_num, section_num=result.section_num) }}">
+                                        Title {{ result.title_num }}, Chapter {{ result.chapter_num }}, Section {{ result.section_num }}
+                                    </a>
+                                {% endif %}
+                            </h3>
+
+                            {% if not result.is_title_match is defined or not result.is_title_match %}
+                                <p>{{ result.heading }}</p>
+                            {% endif %}
+
+                            <p class="snippet">{{ result.highlighted_snippet|safe }}</p>
+
+                            {% if result.matched_terms %}
+                                <div class="search-result-tags">
+                                    {% for term in result.matched_terms %}
+                                        <span class="search-result-tag">{{ term }}</span>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    {% elif query %}
+        <div class="card">
+            <div class="card-body">
+                <p class="text-center">No results found for "{{ query }}"</p>
+                <p class="text-center">Try using different keywords or check your spelling.</p>
+                <p class="text-center">Search tips:</p>
+                <ul class="text-center" style="list-style: none;">
+                    <li>Use quotes for exact phrases: "due process"</li>
+                    <li>Try more general terms</li>
+                    <li>Check for typos</li>
+                    <li>Try searching in a specific title using the advanced search options</li>
+                </ul>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Advanced search toggle
+        const advancedSearchToggle = document.getElementById('advanced-search-toggle');
+        const advancedSearch = document.getElementById('advanced-search');
+
+        if (advancedSearchToggle && advancedSearch) {
+            // Show advanced search if any filters are active
+            {% if filters.title or filters.chapter or filters.section or filters.sort != 'relevance' %}
+                advancedSearch.classList.add('visible');
+                advancedSearchToggle.textContent = 'Hide Advanced Search Options';
+            {% endif %}
+
+            advancedSearchToggle.addEventListener('click', function() {
+                advancedSearch.classList.toggle('visible');
+                advancedSearchToggle.textContent = advancedSearch.classList.contains('visible')
+                    ? 'Hide Advanced Search Options'
+                    : 'Advanced Search Options';
+            });
+        }
+
+        // Search suggestions
+        const searchInput = document.getElementById('search-input');
+        const suggestionsContainer = document.getElementById('search-suggestions');
+        let debounceTimer;
+
+        if (searchInput && suggestionsContainer) {
+            // Show suggestions when input is focused
+            searchInput.addEventListener('focus', function() {
+                if (searchInput.value.length >= 2) {
+                    fetchSuggestions(searchInput.value);
+                }
+            });
+
+            // Hide suggestions when clicking outside
+            document.addEventListener('click', function(event) {
+                if (!searchInput.contains(event.target) && !suggestionsContainer.contains(event.target)) {
+                    suggestionsContainer.style.display = 'none';
+                }
+            });
+
+            // Fetch suggestions as user types
+            searchInput.addEventListener('input', function() {
+                clearTimeout(debounceTimer);
+
+                if (searchInput.value.length >= 2) {
+                    debounceTimer = setTimeout(function() {
+                        fetchSuggestions(searchInput.value);
+                    }, 300); // Debounce for 300ms
+                } else {
+                    suggestionsContainer.style.display = 'none';
+                }
+            });
+
+            // Handle keyboard navigation
+            searchInput.addEventListener('keydown', function(event) {
+                if (suggestionsContainer.style.display === 'block') {
+                    const suggestions = suggestionsContainer.querySelectorAll('.search-suggestion');
+                    const currentIndex = Array.from(suggestions).findIndex(el => el.classList.contains('active'));
+
+                    if (event.key === 'ArrowDown') {
+                        event.preventDefault();
+                        navigateSuggestion(currentIndex + 1, suggestions);
+                    } else if (event.key === 'ArrowUp') {
+                        event.preventDefault();
+                        navigateSuggestion(currentIndex - 1, suggestions);
+                    } else if (event.key === 'Enter' && currentIndex >= 0) {
+                        event.preventDefault();
+                        suggestions[currentIndex].click();
+                    } else if (event.key === 'Escape') {
+                        suggestionsContainer.style.display = 'none';
+                    }
+                }
+            });
+        }
+
+        function navigateSuggestion(index, suggestions) {
+            // Remove active class from all suggestions
+            suggestions.forEach(s => s.classList.remove('active'));
+
+            // Calculate new index (wrap around)
+            const newIndex = (index + suggestions.length) % suggestions.length;
+
+            if (newIndex >= 0 && newIndex < suggestions.length) {
+                suggestions[newIndex].classList.add('active');
+                suggestions[newIndex].scrollIntoView({ block: 'nearest' });
+            }
+        }
+
+        function fetchSuggestions(query) {
+            fetch(`/api/search/suggestions?q=${encodeURIComponent(query)}`)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.suggestions && data.suggestions.length > 0) {
+                        renderSuggestions(data.suggestions);
+                        suggestionsContainer.style.display = 'block';
+                    } else {
+                        suggestionsContainer.style.display = 'none';
+                    }
+                })
+                .catch(error => {
+                    console.error('Error fetching suggestions:', error);
+                    suggestionsContainer.style.display = 'none';
+                });
+        }
+
+        function renderSuggestions(suggestions) {
+            suggestionsContainer.innerHTML = '';
+
+            suggestions.forEach(suggestion => {
+                const div = document.createElement('div');
+                div.className = 'search-suggestion';
+
+                // Add type badge
+                const badge = document.createElement('span');
+                badge.className = `type-badge type-${suggestion.type}`;
+                badge.textContent = suggestion.type.charAt(0).toUpperCase() + suggestion.type.slice(1);
+                div.appendChild(badge);
+
+                // Add suggestion text
+                const text = document.createElement('span');
+                text.textContent = suggestion.text;
+                div.appendChild(text);
+
+                // Handle click based on suggestion type
+                div.addEventListener('click', function() {
+                    if (suggestion.type === 'search') {
+                        // Just submit the form with the current query
+                        searchInput.value = query;
+                        document.getElementById('search-form').submit();
+                    } else if (suggestion.type === 'title') {
+                        // Navigate to title page
+                        window.location.href = `/title/${suggestion.title_num}`;
+                    } else if (suggestion.type === 'chapter') {
+                        // Navigate to chapter page
+                        window.location.href = `/chapter/${suggestion.title_num}/${suggestion.chapter_num}`;
+                    } else if (suggestion.type === 'section') {
+                        // Navigate to section page
+                        window.location.href = `/section/${suggestion.title_num}/${suggestion.chapter_num}/${suggestion.section_num}`;
+                    }
+                });
+
+                suggestionsContainer.appendChild(div);
+            });
+        }
+    });
+</script>
+{% endblock %}

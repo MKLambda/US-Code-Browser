@@ -1,0 +1,45 @@
+{% extends "base_modern.html" %}
+
+{% block title %}US Code Browser - Home{% endblock %}
+
+{% block content %}
+    <h1 class="text-center mb-3">United States Code</h1>
+    <p class="text-center mb-4">Browse the United States Code by title or use the search function to find specific content.</p>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <div class="search-box">
+                <input type="text" class="list-filter" data-target="titles-list" placeholder="Filter titles...">
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="titles-list" id="titles-list">
+                {% for title in titles %}
+                    <div class="title-card">
+                        <a href="{{ url_for('title', title_num=title.number) }}">
+                            <span class="title-number">Title {{ title.number }}</span>
+                            <span class="title-name">{{ title.name }}</span>
+                        </a>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h2 class="mb-0">About the US Code</h2>
+        </div>
+        <div class="card-body">
+            <p>The United States Code is the codification by subject matter of the general and permanent laws of the United States. It is divided by broad subjects into 54 titles and published by the Office of the Law Revision Counsel of the U.S. House of Representatives.</p>
+            
+            <p>The US Code Browser allows you to:</p>
+            <ul>
+                <li>Browse all 54 titles of the United States Code</li>
+                <li>Navigate through chapters and sections</li>
+                <li>Search for specific content across all titles</li>
+                <li>View the latest official release of the US Code</li>
+            </ul>
+        </div>
+    </div>
+{% endblock %}

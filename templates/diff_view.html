@@ -1,0 +1,445 @@
+{% extends "base_modern.html" %}
+
+{% block title %}US Code Diff: {{ title_num }} ({{ old_version }} vs {{ new_version }}){% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Diff container */
+    .diff-container {
+        font-family: monospace;
+        white-space: pre-wrap;
+        margin-bottom: 20px;
+        border-radius: var(--border-radius);
+        overflow: hidden;
+    }
+    
+    .diff-header {
+        background-color: #f0f0f0;
+        padding: 5px 10px;
+        border: 1px solid #ccc;
+        border-bottom: none;
+        font-weight: bold;
+        font-size: 0.9rem;
+        color: #666;
+    }
+    
+    .diff-content {
+        border: 1px solid #ccc;
+        overflow: auto;
+        max-height: 500px;
+    }
+    
+    .diff-line {
+        padding: 0 5px;
+        line-height: 1.5;
+    }
+    
+    .diff-line-num {
+        color: #999;
+        padding-right: 10px;
+        text-align: right;
+        width: 40px;
+        display: inline-block;
+        user-select: none;
+    }
+    
+    .diff-add {
+        background-color: #e6ffed;
+    }
+    
+    .diff-del {
+        background-color: #ffeef0;
+    }
+    
+    .diff-ctx {
+        background-color: #f8f8f8;
+    }
+    
+    ins {
+        background-color: #acf2bd;
+        text-decoration: none;
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+    
+    del {
+        background-color: #fdb8c0;
+        text-decoration: none;
+        padding: 0 2px;
+        border-radius: 2px;
+    }
+    
+    /* Side-by-side specific styles */
+    .diff-table {
+        width: 100%;
+        border-collapse: collapse;
+        table-layout: fixed;
+    }
+    
+    .diff-table td {
+        vertical-align: top;
+        padding: 0;
+    }
+    
+    .diff-old, .diff-new {
+        width: 50%;
+    }
+    
+    /* Version selector */
+    .version-selector {
+        display: flex;
+        gap: var(--spacing-md);
+        margin-bottom: var(--spacing-lg);
+        align-items: flex-end;
+    }
+    
+    .version-group {
+        flex: 1;
+    }
+    
+    .version-label {
+        display: block;
+        margin-bottom: var(--spacing-xs);
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+    
+    .version-select {
+        width: 100%;
+        padding: var(--spacing-sm);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+    }
+    
+    .compare-button {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: var(--border-radius);
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    
+    .compare-button:hover {
+        background-color: var(--secondary-color);
+    }
+    
+    /* View toggle */
+    .view-toggle {
+        display: flex;
+        justify-content: flex-end;
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .view-toggle-button {
+        background-color: var(--background-color);
+        border: 1px solid var(--border-color);
+        padding: var(--spacing-xs) var(--spacing-sm);
+        cursor: pointer;
+        font-size: 0.9rem;
+    }
+    
+    .view-toggle-button:first-child {
+        border-top-left-radius: var(--border-radius);
+        border-bottom-left-radius: var(--border-radius);
+    }
+    
+    .view-toggle-button:last-child {
+        border-top-right-radius: var(--border-radius);
+        border-bottom-right-radius: var(--border-radius);
+    }
+    
+    .view-toggle-button.active {
+        background-color: var(--primary-color);
+        color: white;
+        border-color: var(--primary-color);
+    }
+    
+    /* Status indicators */
+    .status-indicator {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        margin-left: var(--spacing-sm);
+    }
+    
+    .status-modified {
+        background-color: #f1c40f;
+        color: #7d6608;
+    }
+    
+    .status-added {
+        background-color: #2ecc71;
+        color: #1b7943;
+    }
+    
+    .status-deleted {
+        background-color: #e74c3c;
+        color: #7b241c;
+    }
+    
+    /* Section navigation */
+    .section-nav {
+        background-color: var(--background-color);
+        padding: var(--spacing-md);
+        border-radius: var(--border-radius);
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .section-nav-title {
+        font-weight: 600;
+        margin-bottom: var(--spacing-sm);
+    }
+    
+    .section-nav-list {
+        max-height: 300px;
+        overflow-y: auto;
+        padding-left: var(--spacing-md);
+    }
+    
+    .section-nav-item {
+        margin-bottom: var(--spacing-xs);
+    }
+    
+    .section-nav-link {
+        color: var(--text-color);
+        text-decoration: none;
+    }
+    
+    .section-nav-link:hover {
+        color: var(--primary-color);
+        text-decoration: underline;
+    }
+    
+    /* Summary */
+    .diff-summary {
+        background-color: var(--background-color);
+        padding: var(--spacing-md);
+        border-radius: var(--border-radius);
+        margin-bottom: var(--spacing-lg);
+    }
+    
+    .diff-summary-title {
+        font-weight: 600;
+        margin-bottom: var(--spacing-sm);
+    }
+    
+    .diff-stat {
+        display: flex;
+        align-items: center;
+        margin-bottom: var(--spacing-xs);
+    }
+    
+    .diff-stat-label {
+        width: 120px;
+        font-weight: 500;
+    }
+    
+    .diff-stat-value {
+        font-weight: 600;
+    }
+    
+    .diff-stat-bar {
+        height: 8px;
+        border-radius: 4px;
+        margin-left: var(--spacing-sm);
+    }
+    
+    .diff-stat-additions {
+        background-color: #2ecc71;
+    }
+    
+    .diff-stat-deletions {
+        background-color: #e74c3c;
+    }
+    
+    .diff-stat-modifications {
+        background-color: #f1c40f;
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<ul class="breadcrumbs">
+    <li><a href="{{ url_for('index') }}">Home</a></li>
+    <li><a href="{{ url_for('title', title_num=title_num) }}">Title {{ title_num }}</a></li>
+    <li><a href="{{ url_for('updates') }}">Updates</a></li>
+    <li><a href="#">Diff View</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h1>US Code Diff: Title {{ title_num }}</h1>
+    
+    <div class="version-selector">
+        <div class="version-group">
+            <label for="old-version" class="version-label">Old Version:</label>
+            <select id="old-version" class="version-select">
+                {% for version in available_versions %}
+                    <option value="{{ version }}" {% if version == old_version %}selected{% endif %}>{{ version }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="version-group">
+            <label for="new-version" class="version-label">New Version:</label>
+            <select id="new-version" class="version-select">
+                {% for version in available_versions %}
+                    <option value="{{ version }}" {% if version == new_version %}selected{% endif %}>{{ version }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <button id="compare-button" class="compare-button">Compare Versions</button>
+    </div>
+    
+    <div class="view-toggle">
+        <button class="view-toggle-button {% if view_mode == 'inline' %}active{% endif %}" data-mode="inline">Inline View</button>
+        <button class="view-toggle-button {% if view_mode == 'side-by-side' %}active{% endif %}" data-mode="side-by-side">Side-by-Side View</button>
+    </div>
+    
+    {% if diff_data %}
+        <div class="diff-summary">
+            <h2 class="diff-summary-title">Summary of Changes</h2>
+            
+            <div class="diff-stat">
+                <span class="diff-stat-label">Added Sections:</span>
+                <span class="diff-stat-value">{{ diff_summary.added_sections }}</span>
+                {% if diff_summary.added_sections > 0 %}
+                    <div class="diff-stat-bar diff-stat-additions" style="width: {{ diff_summary.added_sections * 10 }}px;"></div>
+                {% endif %}
+            </div>
+            
+            <div class="diff-stat">
+                <span class="diff-stat-label">Deleted Sections:</span>
+                <span class="diff-stat-value">{{ diff_summary.deleted_sections }}</span>
+                {% if diff_summary.deleted_sections > 0 %}
+                    <div class="diff-stat-bar diff-stat-deletions" style="width: {{ diff_summary.deleted_sections * 10 }}px;"></div>
+                {% endif %}
+            </div>
+            
+            <div class="diff-stat">
+                <span class="diff-stat-label">Modified Sections:</span>
+                <span class="diff-stat-value">{{ diff_summary.modified_sections }}</span>
+                {% if diff_summary.modified_sections > 0 %}
+                    <div class="diff-stat-bar diff-stat-modifications" style="width: {{ diff_summary.modified_sections * 10 }}px;"></div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <div class="section-nav">
+            <h2 class="section-nav-title">Navigation</h2>
+            <div class="section-nav-list">
+                {% for chapter in diff_data.chapter_diffs %}
+                    <div class="section-nav-item">
+                        <a href="#chapter-{{ chapter.chapter_num }}" class="section-nav-link">
+                            Chapter {{ chapter.chapter_num }}: {{ chapter.heading }}
+                            <span class="status-indicator status-{{ chapter.status }}">{{ chapter.status }}</span>
+                        </a>
+                        
+                        {% if chapter.section_diffs %}
+                            <ul>
+                                {% for section in chapter.section_diffs %}
+                                    <li class="section-nav-item">
+                                        <a href="#section-{{ chapter.chapter_num }}-{{ section.section_num }}" class="section-nav-link">
+                                            Section {{ section.section_num }}: {{ section.heading }}
+                                            <span class="status-indicator status-{{ section.status }}">{{ section.status }}</span>
+                                        </a>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+        
+        <div class="diff-content-container">
+            {% for chapter in diff_data.chapter_diffs %}
+                <h2 id="chapter-{{ chapter.chapter_num }}">
+                    Chapter {{ chapter.chapter_num }}: {{ chapter.heading }}
+                    <span class="status-indicator status-{{ chapter.status }}">{{ chapter.status }}</span>
+                </h2>
+                
+                {% for section in chapter.section_diffs %}
+                    <h3 id="section-{{ chapter.chapter_num }}-{{ section.section_num }}">
+                        Section {{ section.section_num }}: {{ section.heading }}
+                        <span class="status-indicator status-{{ section.status }}">{{ section.status }}</span>
+                    </h3>
+                    
+                    {% if section.content_diff %}
+                        <h4>Content Changes</h4>
+                        {{ section.content_diff_html|safe }}
+                    {% endif %}
+                    
+                    {% if section.subsection_diffs %}
+                        <h4>Subsection Changes</h4>
+                        {% for subsection in section.subsection_diffs %}
+                            <h5>
+                                Subsection {{ subsection.num }}
+                                <span class="status-indicator status-{{ subsection.status }}">{{ subsection.status }}</span>
+                            </h5>
+                            {{ subsection.diff_html|safe }}
+                        {% endfor %}
+                    {% endif %}
+                {% endfor %}
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="message-box">
+            <p>Select versions to compare and click "Compare Versions" to see differences.</p>
+        </div>
+    {% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Version comparison
+        const oldVersionSelect = document.getElementById('old-version');
+        const newVersionSelect = document.getElementById('new-version');
+        const compareButton = document.getElementById('compare-button');
+        
+        compareButton.addEventListener('click', function() {
+            const oldVersion = oldVersionSelect.value;
+            const newVersion = newVersionSelect.value;
+            
+            if (oldVersion === newVersion) {
+                alert('Please select different versions to compare');
+                return;
+            }
+            
+            // Redirect to the diff view with the selected versions
+            window.location.href = `{{ url_for('diff_view', title_num=title_num) }}?old=${oldVersion}&new=${newVersion}&view=${getViewMode()}`;
+        });
+        
+        // View toggle
+        const viewToggleButtons = document.querySelectorAll('.view-toggle-button');
+        
+        viewToggleButtons.forEach(button => {
+            button.addEventListener('click', function() {
+                // Update active state
+                viewToggleButtons.forEach(btn => btn.classList.remove('active'));
+                this.classList.add('active');
+                
+                // Redirect to update the view mode
+                const oldVersion = oldVersionSelect.value;
+                const newVersion = newVersionSelect.value;
+                const viewMode = this.getAttribute('data-mode');
+                
+                window.location.href = `{{ url_for('diff_view', title_num=title_num) }}?old=${oldVersion}&new=${newVersion}&view=${viewMode}`;
+            });
+        });
+        
+        function getViewMode() {
+            const activeButton = document.querySelector('.view-toggle-button.active');
+            return activeButton ? activeButton.getAttribute('data-mode') : 'inline';
+        }
+    });
+</script>
+{% endblock %}

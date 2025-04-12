@@ -1,0 +1,95 @@
+{% extends "base_modern.html" %}
+
+{% block title %}US Code - Title {{ title_num }} - Chapter {{ chapter_num }}{% endblock %}
+
+{% block breadcrumbs %}
+<ul class="breadcrumbs">
+    <li><a href="{{ url_for('index') }}">Home</a></li>
+    <li><a href="{{ url_for('title', title_num=title_num) }}">Title {{ title_num }}</a></li>
+    <li><a href="#">Chapter {{ chapter_num }}</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h1>Chapter {{ chapter_num }}</h1>
+    <h2 class="mb-4">{{ chapter_data.heading }}</h2>
+
+    <div class="card">
+        <div class="card-header">
+            <div class="search-box">
+                <input type="text" class="list-filter" data-target="sections-list" placeholder="Filter sections...">
+            </div>
+        </div>
+        <div class="card-body">
+            <h3>Sections</h3>
+            <div id="sections-loading" class="text-center">
+                <div class="loading-spinner"></div>
+                <p>Loading sections...</p>
+            </div>
+            <ul class="sections-list" id="sections-list" style="display: none;">
+                <!-- Sections will be loaded dynamically -->
+            </ul>
+        </div>
+    </div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Fetch sections data
+        fetch('/api/title/{{ title_num }}/chapter/{{ chapter_num }}/sections')
+            .then(response => response.json())
+            .then(data => {
+                const sectionsList = document.getElementById('sections-list');
+                const loadingElement = document.getElementById('sections-loading');
+
+                if (data.error) {
+                    loadingElement.innerHTML = `<p class="text-error">Error: ${data.error}</p>`;
+                    return;
+                }
+
+                if (data.sections && data.sections.length > 0) {
+                    // Create section items
+                    data.sections.forEach(section => {
+                        const li = document.createElement('li');
+                        li.className = 'section-item';
+
+                        const a = document.createElement('a');
+                        a.href = `/section/{{ title_num }}/{{ chapter_num }}/${section.num}`;
+
+                        const numSpan = document.createElement('span');
+                        numSpan.className = 'section-number';
+                        numSpan.textContent = section.display_num || `Section ${section.num}`;
+
+                        const headingSpan = document.createElement('span');
+                        headingSpan.className = 'section-heading';
+                        headingSpan.textContent = section.heading;
+
+                        a.appendChild(numSpan);
+                        a.appendChild(document.createTextNode(' '));
+                        a.appendChild(headingSpan);
+                        li.appendChild(a);
+                        sectionsList.appendChild(li);
+                    });
+
+                    // Hide loading, show sections
+                    loadingElement.style.display = 'none';
+                    sectionsList.style.display = 'block';
+
+                    // Initialize filter
+                    if (window.initFilterLists) {
+                        window.initFilterLists();
+                    }
+                } else {
+                    loadingElement.innerHTML = '<p>No sections found for this chapter.</p>';
+                }
+            })
+            .catch(error => {
+                console.error('Error fetching sections:', error);
+                document.getElementById('sections-loading').innerHTML =
+                    '<p class="text-error">Error loading sections. Please try again later.</p>';
+            });
+    });
+</script>
+{% endblock %}

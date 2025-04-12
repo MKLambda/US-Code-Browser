@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}US Code Browser{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='modern.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='favicon.ico') }}" type="image/x-icon">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>US Code Browser</h1>
+            <nav>
+                <ul>
+                    <li><a href="{{ url_for('index') }}">Home</a></li>
+                    <li><a href="{{ url_for('search') }}">Search</a></li>
+                    <li><a href="{{ url_for('updates') }}">Updates</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <div class="container">
+            {% block breadcrumbs %}{% endblock %}
+
+            {% block content %}{% endblock %}
+        </div>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 US Code Browser</p>
+        </div>
+    </footer>
+
+    <script src="{{ url_for('static', filename='modern.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

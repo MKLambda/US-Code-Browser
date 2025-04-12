@@ -1,0 +1,310 @@
+{% extends "base_modern.html" %}
+
+{% block title %}US Code Updates{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Update history styles */
+    .update-history {
+        margin-top: var(--spacing-lg);
+    }
+    
+    .update-card {
+        background-color: var(--background-color);
+        border-radius: var(--border-radius);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        margin-bottom: var(--spacing-md);
+        overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .update-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+    }
+    
+    .update-header {
+        background-color: var(--primary-color);
+        color: white;
+        padding: var(--spacing-md);
+        font-weight: 600;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    
+    .update-date {
+        font-size: 0.9rem;
+        opacity: 0.9;
+    }
+    
+    .update-content {
+        padding: var(--spacing-md);
+    }
+    
+    .update-details {
+        margin-top: var(--spacing-sm);
+        font-size: 0.95rem;
+        color: var(--text-color);
+    }
+    
+    .change-item {
+        margin-bottom: var(--spacing-sm);
+        padding-left: var(--spacing-md);
+        border-left: 3px solid var(--secondary-color);
+    }
+    
+    .change-type {
+        font-weight: 600;
+        color: var(--secondary-color);
+        text-transform: uppercase;
+        font-size: 0.8rem;
+    }
+    
+    /* Subscription form styles */
+    .subscription-form {
+        background-color: var(--background-color);
+        border-radius: var(--border-radius);
+        padding: var(--spacing-md);
+        margin-top: var(--spacing-lg);
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .form-group {
+        margin-bottom: var(--spacing-md);
+    }
+    
+    .form-label {
+        display: block;
+        margin-bottom: var(--spacing-xs);
+        font-weight: 600;
+        color: var(--primary-color);
+    }
+    
+    .form-input {
+        width: 100%;
+        padding: var(--spacing-sm);
+        border: 1px solid var(--border-color);
+        border-radius: var(--border-radius);
+        font-size: 1rem;
+    }
+    
+    .form-input:focus {
+        border-color: var(--primary-color);
+        outline: none;
+        box-shadow: 0 0 0 2px rgba(44, 62, 80, 0.2);
+    }
+    
+    .checkbox-group {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--spacing-sm);
+        margin-top: var(--spacing-xs);
+    }
+    
+    .checkbox-item {
+        display: flex;
+        align-items: center;
+        margin-right: var(--spacing-md);
+        margin-bottom: var(--spacing-xs);
+    }
+    
+    .checkbox-input {
+        margin-right: var(--spacing-xs);
+    }
+    
+    .submit-button {
+        background-color: var(--primary-color);
+        color: white;
+        border: none;
+        border-radius: var(--border-radius);
+        padding: var(--spacing-sm) var(--spacing-md);
+        font-size: 1rem;
+        cursor: pointer;
+        transition: background-color 0.2s ease;
+    }
+    
+    .submit-button:hover {
+        background-color: var(--secondary-color);
+    }
+    
+    /* Status message styles */
+    .status-message {
+        margin-top: var(--spacing-md);
+        padding: var(--spacing-sm) var(--spacing-md);
+        border-radius: var(--border-radius);
+        font-weight: 500;
+    }
+    
+    .status-success {
+        background-color: rgba(46, 204, 113, 0.2);
+        color: #27ae60;
+        border-left: 4px solid #27ae60;
+    }
+    
+    .status-error {
+        background-color: rgba(231, 76, 60, 0.2);
+        color: #c0392b;
+        border-left: 4px solid #c0392b;
+    }
+    
+    /* Next update info */
+    .next-update-info {
+        background-color: rgba(52, 152, 219, 0.1);
+        border-radius: var(--border-radius);
+        padding: var(--spacing-md);
+        margin-top: var(--spacing-md);
+        border-left: 4px solid var(--secondary-color);
+    }
+    
+    .next-update-date {
+        font-weight: 600;
+        color: var(--secondary-color);
+    }
+</style>
+{% endblock %}
+
+{% block breadcrumbs %}
+<ul class="breadcrumbs">
+    <li><a href="{{ url_for('index') }}">Home</a></li>
+    <li><a href="#">Updates</a></li>
+</ul>
+{% endblock %}
+
+{% block content %}
+    <h1>US Code Updates</h1>
+    
+    <div class="content-section">
+        <h2>Current Status</h2>
+        <p>The US Code is currently based on <strong>Public Law {{ current_release.public_law }}</strong> ({{ current_release.date }}).</p>
+        
+        <div class="next-update-info">
+            <p>Next scheduled update check: <span class="next-update-date">{{ next_update_date }}</span></p>
+            <p>Updates are automatically checked every 30 days. New releases are processed and made available as soon as they are published.</p>
+        </div>
+    </div>
+    
+    <div class="content-section">
+        <h2>Subscribe to Updates</h2>
+        <p>Receive email notifications when the US Code is updated.</p>
+        
+        <div class="subscription-form">
+            <form action="{{ url_for('subscribe_updates') }}" method="post">
+                <div class="form-group">
+                    <label for="email" class="form-label">Email Address</label>
+                    <input type="email" id="email" name="email" class="form-input" required>
+                </div>
+                
+                <div class="form-group">
+                    <label class="form-label">Select Titles (optional)</label>
+                    <p class="form-help">If none are selected, you'll receive updates for all titles.</p>
+                    
+                    <div class="checkbox-group">
+                        {% for title_num in range(1, 55) %}
+                            {% if title_num != 53 %}  <!-- Title 53 is reserved -->
+                                <div class="checkbox-item">
+                                    <input type="checkbox" id="title{{ title_num }}" name="titles" value="{{ title_num }}" class="checkbox-input">
+                                    <label for="title{{ title_num }}">Title {{ title_num }}</label>
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <button type="submit" class="submit-button">Subscribe</button>
+            </form>
+            
+            {% if status_message %}
+                <div class="status-message {% if status_success %}status-success{% else %}status-error{% endif %}">
+                    {{ status_message }}
+                </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <div class="update-history">
+        <h2>Update History</h2>
+        
+        {% if updates %}
+            {% for update in updates %}
+                <div class="update-card">
+                    <div class="update-header">
+                        <div>Public Law {{ update.to_version }}</div>
+                        <div class="update-date">{{ update.to_date }}</div>
+                    </div>
+                    <div class="update-content">
+                        <div class="update-details">
+                            Updated from Public Law {{ update.from_version }} ({{ update.from_date }})
+                        </div>
+                        
+                        <h3>Changes</h3>
+                        {% for change in update.changes %}
+                            <div class="change-item">
+                                <div class="change-type">{{ change.type }}</div>
+                                <div class="change-description">{{ change.description }}</div>
+                                <div class="change-details">{{ change.details }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <p>No update history available.</p>
+        {% endif %}
+    </div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Select all titles button
+        const selectAllBtn = document.createElement('button');
+        selectAllBtn.textContent = 'Select All';
+        selectAllBtn.type = 'button';
+        selectAllBtn.className = 'select-all-btn';
+        selectAllBtn.style.marginBottom = '10px';
+        selectAllBtn.style.marginRight = '10px';
+        selectAllBtn.style.padding = '5px 10px';
+        selectAllBtn.style.backgroundColor = '#3498db';
+        selectAllBtn.style.color = 'white';
+        selectAllBtn.style.border = 'none';
+        selectAllBtn.style.borderRadius = '4px';
+        selectAllBtn.style.cursor = 'pointer';
+        
+        // Clear selection button
+        const clearBtn = document.createElement('button');
+        clearBtn.textContent = 'Clear Selection';
+        clearBtn.type = 'button';
+        clearBtn.className = 'clear-btn';
+        clearBtn.style.marginBottom = '10px';
+        clearBtn.style.padding = '5px 10px';
+        clearBtn.style.backgroundColor = '#e74c3c';
+        clearBtn.style.color = 'white';
+        clearBtn.style.border = 'none';
+        clearBtn.style.borderRadius = '4px';
+        clearBtn.style.cursor = 'pointer';
+        
+        // Add buttons before the checkbox group
+        const checkboxGroup = document.querySelector('.checkbox-group');
+        checkboxGroup.parentNode.insertBefore(selectAllBtn, checkboxGroup);
+        checkboxGroup.parentNode.insertBefore(clearBtn, checkboxGroup);
+        
+        // Get all checkboxes
+        const checkboxes = document.querySelectorAll('input[name="titles"]');
+        
+        // Select all button click handler
+        selectAllBtn.addEventListener('click', function() {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = true;
+            });
+        });
+        
+        // Clear button click handler
+        clearBtn.addEventListener('click', function() {
+            checkboxes.forEach(checkbox => {
+                checkbox.checked = false;
+            });
+        });
+    });
+</script>
+{% endblock %}
