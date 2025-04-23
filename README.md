@@ -150,6 +150,12 @@ python enhanced_updates.py --setup
 - **Public Information**: Provide accessible legal information to constituents
 - **Regulatory Compliance**: Monitor changes to relevant regulations
 
+## Projects Implementing US Code Browser
+
+### Ontocracia.org 
+-  Ontocracia aggregates and standardizes political data from around the world—covering countries, legislative bodies, political parties, and politicians.
+- Implemented in "https://app.ontocracia.org/countries/us" laws tab
+
 ## Advanced Configuration
 
 ### Performance Tuning
